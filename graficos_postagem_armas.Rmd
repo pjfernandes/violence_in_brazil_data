@@ -1,0 +1,141 @@
+```{r fig.align='center', echo=FALSE, warning=FALSE, message=FALSE}
+library(dplyr)
+library(plotly)
+library(Kendall)
+
+multiplot <- function(..., plotlist = NULL, cols = 1, layout = NULL, title = NULL, 
+                      fontsize = 14, fontfamily = "Helvetica", fontface = "bold") {
+  require(grid)
+  plots <- c(list(...), plotlist)
+  numPlots = length(plots)
+  if (is.null(layout)) {
+    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
+                     ncol = cols, nrow = ceiling(numPlots/cols))
+  }
+   if (length(title)>0){
+    layout <- rbind(rep(0, ncol(layout)), layout)
+  }
+   if (numPlots==1) {
+    print(plots[[1]])
+   } else {
+    grid.newpage()
+    pushViewport(viewport(layout = grid.layout(nrow(layout), 
+                          ncol(layout), 
+                          heights = if (length(title)>0) {unit(c(0.5, rep(5,nrow(layout)-1)), "null")}
+                          else {unit(c(rep(5, nrow(layout))), "null")})))
+    if(length(title) > 1){
+    ncols <- 1:ncol(layout)
+    for(i in seq(ncols)){
+      grid.text(title[i], 
+                              vp = viewport(layout.pos.row = 1, layout.pos.col = i),
+                              gp = gpar(fontsize = fontsize, fontfamily = fontfamily, fontface = fontface))
+    }
+    } else {
+      grid.text(title, 
+                vp = viewport(layout.pos.row = 1, layout.pos.col = 1:ncol(layout)),
+                gp = gpar(fontsize = fontsize, fontfamily = fontfamily, fontface = fontface))
+    }
+    for (i in 1:numPlots) {
+      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
+       print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
+                                      layout.pos.col = matchidx$col))
+    }
+  }
+}
+
+```
+<p>Fontes: http://especiais.g1.globo.com/monitor-da-violencia/2018/mortes-violentas-no-brasil/?_ga=2.62510572.1711685417.1581424139-28686389.1558827135#/dados-mensais-2019?mes_2019=consolidado&estado=TO&estado_compare=AC&crime=Todos%20os%20crimes%20violentos</p>
+<p>https://static.poder360.com.br/2020/10/Anuario-2020-FINAL.pdf</p>
+
+## Gráfico 1 - Evolução homicídios (1980-2018)
+```{r}
+x<-1980:2018
+y<-c(11.69,12.56,12.57,13.77,15.32,15.00,15.26,16.89,16.78,20.30,22.22,20.94,19.21,20.20,21.23,23.84,24.78,25.39,25.94,26.20,27.35,27.86,28.53,29.14,26.94,26.13,26.61,26.20,26.72,27.18,27.80,27.45,29.41,28.55,29.82,28.89,30.33,31.59,27.8)
+z<-c(rep(NA,24),y[25:39])
+y<-c(y[1:25],rep(NA,14))
+
+resultado2<-data.frame(x=x,y=y,z=z)
+
+fig <- plot_ly(resultado2, x = x, y = y, type = 'scatter', mode = 'lines',line = list(color = 'rgb(255, 255, 255)',dash = 'dash', width = 2),name = 'Taxa de Homicídios (1980-2003)')
+fig <- fig %>% add_trace(y = ~z,line = list(color = 'rgb(205, 12, 24)', width = 3,dash = F),name = 'Taxa de Homicídios (2004-2018)')
+
+fig <- fig %>% layout(legend = list(x = 0.1, y = 0.9),plot_bgcolor='rgb(25,25,25)', paper_bgcolor='rgb(0, 0, 0)',
+        yaxis = list(title="Homicídios por 100 mil habs.",zeroline = T, tickfont = list(size = 26,color = 'rgba(255, 255, 255, .9)'), titlefont = list(size = 26,color = 'rgba(255, 255, 255, .9)')),
+         xaxis = list(title="",zeroline = T,tickfont = list(size = 26,color = 'rgba(255, 255, 255, .9)'),titlefont = list(size = 26,color = 'rgba(255, 255, 255, .9)')))
+
+fig
+
+MannKendall(y)
+```
+
+## Gráfico 2 - Correlação Armas Registradas (SINARM) x Crimes violentos por 100 mil habs.
+```{r fig.align='center', echo=FALSE, message=FALSE, warning=FALSE, out.width="100%"}
+
+t <- list(
+  family = "sans serif",
+  size = 24,
+  color = 'black')
+
+######################################################################SCATTER PLOT PLOTLY
+df<-read.csv("taxa_homicidios_crimes_violentos.txt", sep="\t",h=T)
+
+armas<-df$armas
+total_crimes<-df$TAXA_CRIMES_VIOLENTOS
+taxa_crimes_violentos<-df$homicidios
+
+x<-armas
+y<-total_crimes
+z<-taxa_crimes_violentos
+
+resultado2<-data.frame(armas=x,taxa=y,total=z)
+
+fit <- lm(taxa~armas,data=resultado2)
+
+fig2<-resultado2 %>% 
+  plot_ly(x = ~armas) %>% add_lines(x = ~armas, y = fitted(fit),line=list(color='red')) %>% 
+  add_markers(y = ~taxa,color = 'rgba(152, 0, 0, .8)',marker=list(size=15,color = 'rgba(255, 255, 255, .9)',line = list(color = 'rgb(205, 12, 24)',width = 3))) %>% 
+  
+  layout(showlegend = FALSE,
+         #title = 'ARMAS x HOMICÍDIOS',font=list(size = 16,color = 'rgba(255, 255, 255, .9)'),
+         plot_bgcolor='rgb(25,25,25)', paper_bgcolor='rgb(0, 0, 0)',
+         yaxis = list(title="Crimes violentos por 100 mil habs.",zeroline = T, tickfont = list(size = 26,color = 'rgba(255, 255, 255, .9)'), titlefont = list(size = 26,color = 'rgba(255, 255, 255, .9)')),
+         xaxis = list(title="Armas registradas (SINARM)",zeroline = T,tickfont = list(size = 26,color = 'rgba(255, 255, 255, .9)'),titlefont = list(size = 26,color = 'rgba(255, 255, 255, .9)')))
+
+
+fig2
+summary(fit)
+##########################################################
+```
+
+## Gráfico 3 - Armas Registradas (SINARM) x Total de crimes violentos
+```{r}
+df<-read.csv("taxa_homicidios_crimes_violentos.txt", sep="\t",h=T)
+
+armas<-df$armas
+total_crimes<-df$TAXA_CRIMES_VIOLENTOS
+taxa_crimes_violentos<-df$homicidios
+
+x<-armas
+y<-total_crimes
+z<-taxa_crimes_violentos
+
+resultado2<-data.frame(armas=x,taxa=y,total=z)
+
+fit <- lm(taxa~total,data=resultado2)
+
+fig3<-resultado2 %>% 
+  plot_ly(x = ~armas) %>% add_lines(x = ~armas, y = fitted(fit),line=list(color='red')) %>% 
+  add_markers(y = ~total,color = 'rgba(152, 0, 0, .8)',marker=list(size=15,color = 'rgba(255, 255, 255, .9)',line = list(color = 'rgb(205, 12, 24)',width = 3))) %>% 
+  
+  layout(showlegend = FALSE,
+         #title = 'ARMAS x HOMICÍDIOS',font=list(size = 16,color = 'rgba(255, 255, 255, .9)'),
+         plot_bgcolor='rgb(25,25,25)', paper_bgcolor='rgb(0, 0, 0)',
+         yaxis = list(title="Total de crimes violentos",zeroline = T, tickfont = list(size = 26,color = 'rgba(255, 255, 255, .9)'), titlefont = list(size = 26,color = 'rgba(255, 255, 255, .9)')),
+         xaxis = list(title="Armas registradas (SINARM)",zeroline = T,tickfont = list(size = 26,color = 'rgba(255, 255, 255, .9)'),titlefont = list(size = 26,color = 'rgba(255, 255, 255, .9)')))
+
+
+fig3
+summary(fit)
+
+######################################################################
+```
